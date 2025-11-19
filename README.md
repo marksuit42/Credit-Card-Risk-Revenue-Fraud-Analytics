@@ -1,5 +1,5 @@
 # 💳 Credit Card Risk, Revenue & Fraud Analytics  
-**SQL | Finance Domain | MySQL | Power BI**
+**SQL | Finance Domain | MySQL**
 
 ## 📌 Overview
 This project analyzes **1 million credit card transactions** to identify:
@@ -8,9 +8,7 @@ This project analyzes **1 million credit card transactions** to identify:
 - Fraud and suspicious transaction patterns
 - Delinquency exposure using **DPD buckets**
 
-This is the same type of analytics used at **American Express, JPMorgan, Mastercard, Citi**.
 
----
 
 ## 🗄️ Data Model
 | Table | Rows | Purpose |
@@ -43,18 +41,4 @@ This is the same type of analytics used at **American Express, JPMorgan, Masterc
 ✔ DPD Buckets: Current, 1–30, 31–60, 61–90, 90+  
 ✔ High-Value Merchant Category Profitability  
 
-All queries included in `/sql/queries_finance.sql`
-
----
-
-## 📊 Power BI Dashboard (Coming)
-Amex Royal Blue Theme includes:
-1. **Portfolio Summary**
-2. **Risk & Delinquency Exposure**
-3. **Fraud Monitoring View**
-
-Screenshots and `.pbix` file will be attached soon.
-
----
-
-## 🧩 Folder Structure
+Download Dataset : https://drive.google.com/drive/folders/1HV4UElN-8MJajckOL-s1seRxxJqT9fvq?usp=sharing
