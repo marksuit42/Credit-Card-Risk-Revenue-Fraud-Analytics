@@ -82,3 +82,111 @@ FROM transactions
 WHERE status = 'Success'
 GROUP BY merchant_category
 ORDER BY est_fee_revenue DESC;
+
+#Revolving Credit Revenue — Interest Earning Customers Only - Business value: Identify revenue from customers who don’t pay in full — top source of banking profit.
+
+SELECT 
+    s.card_id,
+    SUM(GREATEST(s.closing_balance - p.payment_amount, 0)) AS revolving_balance,
+    ROUND(SUM(GREATEST(s.closing_balance - p.payment_amount, 0)) * 0.02, 2) AS est_interest_revenue
+FROM statements s
+LEFT JOIN payments p ON s.card_id = p.card_id
+GROUP BY s.card_id
+HAVING revolving_balance > 0
+ORDER BY est_interest_revenue DESC;
+
+#High-Value Customers — CLTV + Profitability - Business value: Target top customers for rewards & retention.
+
+SELECT 
+    c.customer_id,
+    SUM(t.txn_amount) AS total_spend,
+    ROUND(SUM(t.txn_amount) * 0.015, 2) AS revenue_from_fees,
+    CASE WHEN SUM(t.txn_amount) > 20000 THEN 'High Value' ELSE 'Regular' END AS value_segment
+FROM customers c
+JOIN cards cd ON c.customer_id = cd.customer_id
+JOIN transactions t ON cd.card_id = t.card_id
+GROUP BY c.customer_id
+ORDER BY total_spend DESC
+LIMIT 20;
+
+#Credit Score vs Utilization Risk Matrix - Business value: Classic banking risk model — Credit Score x Utilization segmentation.
+
+SELECT
+    c.customer_id,
+    c.credit_score,
+    ROUND(SUM(t.txn_amount) / MAX(cd.credit_limit) * 100, 2) AS utilization_pct,
+    CASE 
+        WHEN c.credit_score < 600 AND SUM(t.txn_amount) / MAX(cd.credit_limit) * 100 > 70 THEN 'High Default Risk'
+        WHEN c.credit_score BETWEEN 600 AND 700 AND SUM(t.txn_amount) / MAX(cd.credit_limit) * 100 > 50 THEN 'Medium Risk'
+        ELSE 'Low Risk'
+    END AS risk_classification
+FROM customers c
+JOIN cards cd ON c.customer_id = cd.customer_id
+JOIN transactions t ON cd.card_id = t.card_id
+GROUP BY c.customer_id, c.credit_score
+ORDER BY risk_classification DESC;
+
+#Txn Count vs Revenue Elasticity by Product Type - Which products generate more revenue per transaction
+
+SELECT
+    cd.product_name,
+    COUNT(t.txn_id) AS txn_count,
+    ROUND(SUM(t.txn_amount),2) AS total_spend,
+    ROUND(SUM(t.txn_amount) * 0.015, 2) AS merchant_fee_revenue,
+    ROUND(AVG(t.txn_amount),2) AS avg_ticket_size
+FROM transactions t
+JOIN cards cd USING (card_id)
+GROUP BY cd.product_name
+ORDER BY merchant_fee_revenue DESC;
+
+#Revolving Revenue Opportunity by Customer Segment - Find high-interest revenue customers
+
+SELECT
+    c.customer_id,
+    ROUND(SUM(t.txn_amount)*0.02,2) AS pot_interest_rev,
+    CASE 
+        WHEN c.credit_score < 600 THEN 'High Yield Risk'
+        WHEN c.credit_score BETWEEN 600 AND 700 THEN 'Medium Yield'
+        ELSE 'Prime'
+    END AS yield_segment
+FROM customers c
+JOIN cards cd USING (customer_id)
+JOIN transactions t USING (card_id)
+GROUP BY c.customer_id
+ORDER BY pot_interest_rev DESC
+LIMIT 50;
+
+#Profit Curve by Location (Card market strategy) - Where should marketing invest more
+
+SELECT 
+    t.txn_city,
+    ROUND(SUM(t.txn_amount),2) AS total_spend,
+    ROUND(SUM(t.txn_amount) * 0.015, 2) AS revenue
+FROM transactions t
+GROUP BY txn_city
+ORDER BY revenue DESC;
+
+#Interchange ROI: Revenue by Merchant Category - Helps decide which merchant partnerships to strengthen
+
+SELECT
+    merchant_category,
+    COUNT(*) AS txn_count,
+    ROUND(SUM(txn_amount),2) AS total_spend,
+    ROUND(SUM(txn_amount) * 0.015,2) AS interchange_revenue,
+    ROUND((SUM(txn_amount) * 0.015) / COUNT(*), 3) AS revenue_per_txn
+FROM transactions
+GROUP BY merchant_category
+ORDER BY revenue_per_txn DESC;
+
+
+#Profitability Heatmap: Channel + Category - Used to detect high-profit behavior patterns
+
+SELECT
+    channel,
+    merchant_category,
+    ROUND(SUM(txn_amount) * 0.015, 2) AS revenue
+FROM transactions
+WHERE status='Success'
+GROUP BY channel, merchant_category
+ORDER BY revenue DESC;
+
