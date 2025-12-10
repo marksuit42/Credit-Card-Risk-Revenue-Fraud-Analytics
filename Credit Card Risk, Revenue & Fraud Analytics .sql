@@ -111,20 +111,41 @@ LIMIT 20;
 
 #Credit Score vs Utilization Risk Matrix - Business value: Classic banking risk model — Credit Score x Utilization segmentation.
 
-SELECT
+-- Get latest statement per card
+WITH latest_stmt AS (
+    SELECT 
+        s.card_id,
+        s.closing_balance
+    FROM statements s
+    JOIN (
+        SELECT 
+            card_id,
+            MAX(statement_date) AS max_statement_date
+        FROM statements
+        GROUP BY card_id
+    ) x 
+      ON s.card_id = x.card_id
+     AND s.statement_date = x.max_statement_date
+)
+
+-- Current utilization & risk based on *latest* closing balance
+SELECT 
     c.customer_id,
-    c.credit_score,
-    ROUND(SUM(t.txn_amount) / MAX(cd.credit_limit) * 100, 2) AS utilization_pct,
+    ROUND(SUM(ls.closing_balance) / SUM(cd.credit_limit) * 100, 2) AS utilization_pct,
     CASE 
-        WHEN c.credit_score < 600 AND SUM(t.txn_amount) / MAX(cd.credit_limit) * 100 > 70 THEN 'High Default Risk'
-        WHEN c.credit_score BETWEEN 600 AND 700 AND SUM(t.txn_amount) / MAX(cd.credit_limit) * 100 > 50 THEN 'Medium Risk'
+        WHEN SUM(ls.closing_balance) / SUM(cd.credit_limit) * 100 > 90 THEN 'Very High Risk'
+        WHEN SUM(ls.closing_balance) / SUM(cd.credit_limit) * 100 > 70 THEN 'High Risk'
+        WHEN SUM(ls.closing_balance) / SUM(cd.credit_limit) * 100 > 30 THEN 'Medium Risk'
         ELSE 'Low Risk'
-    END AS risk_classification
+    END AS risk_category
 FROM customers c
-JOIN cards cd ON c.customer_id = cd.customer_id
-JOIN transactions t ON cd.card_id = t.card_id
-GROUP BY c.customer_id, c.credit_score
-ORDER BY risk_classification DESC;
+JOIN cards cd 
+    ON c.customer_id = cd.customer_id
+JOIN latest_stmt ls 
+    ON cd.card_id = ls.card_id
+GROUP BY c.customer_id
+ORDER BY utilization_pct DESC;
+
 
 #Txn Count vs Revenue Elasticity by Product Type - Which products generate more revenue per transaction
 
@@ -189,4 +210,5 @@ FROM transactions
 WHERE status='Success'
 GROUP BY channel, merchant_category
 ORDER BY revenue DESC;
+
 
